@@ -76,6 +76,95 @@
 
             window.addEventListener('keydown', (e) => this.handleKeyDown(e));
             window.addEventListener('resize', () => this.resizeCanvas());
+
+            // AudioContext — 延迟初始化（浏览器要求用户交互后才能创建）
+            this.audioCtx = null;
+        }
+
+        // 确保 AudioContext 已创建（需在用户手势后调用）
+        _ensureAudio() {
+            if (!this.audioCtx) {
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // 吃食物音效：短促上升音
+        playEatSound() {
+            this._ensureAudio();
+            const ctx = this.audioCtx;
+            const now = ctx.currentTime;
+
+            // 第一音：中频 440Hz，持续 60ms
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(440, now);
+            osc1.frequency.linearRampToValueAtTime(880, now + 0.06);
+            gain1.gain.setValueAtTime(0.12, now);
+            gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc1.connect(gain1).connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.08);
+
+            // 第二音：高频 660Hz，延迟 50ms 叠加
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(660, now + 0.05);
+            osc2.frequency.linearRampToValueAtTime(1320, now + 0.12);
+            gain2.gain.setValueAtTime(0.10, now + 0.05);
+            gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+            osc2.connect(gain2).connect(ctx.destination);
+            osc2.start(now + 0.05);
+            osc2.stop(now + 0.14);
+        }
+
+        // 死亡音效：下降低频
+        playDeathSound() {
+            this._ensureAudio();
+            const ctx = this.audioCtx;
+            const now = ctx.currentTime;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.linearRampToValueAtTime(80, now + 0.35);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.4);
+
+            // 低频轰隆
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(60, now);
+            osc2.frequency.linearRampToValueAtTime(30, now + 0.3);
+            gain2.gain.setValueAtTime(0.2, now);
+            gain2.gain.linearRampToValueAtTime(0.01, now + 0.35);
+            osc2.connect(gain2).connect(ctx.destination);
+            osc2.start(now);
+            osc2.stop(now + 0.35);
+        }
+
+        // 开始音效：短促提示
+        playStartSound() {
+            this._ensureAudio();
+            const ctx = this.audioCtx;
+            const now = ctx.currentTime;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(330, now);
+            osc.frequency.linearRampToValueAtTime(660, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.12);
         }
 
         resetState() {
@@ -179,6 +268,7 @@
             this.overlay.classList.add('hidden');
             if (this.gameLoopId) clearInterval(this.gameLoopId);
             this.gameLoopId = setInterval(() => this.gameStep(), this.speed);
+            this.playStartSound();
         }
 
         gameStep() {
@@ -223,6 +313,7 @@
             if (newHead.x === this.food.x && newHead.y === this.food.y) {
                 this.score++;
                 this.spawnFood();
+                this.playEatSound();
                 // Don't pop tail -> snake grows
             } else {
                 this.snake.pop();
@@ -238,6 +329,7 @@
                 this.gameLoopId = null;
             }
             this.render();
+            this.playDeathSound();
             this.handleGameOver('游戏结束', `得分: ${this.score}`, '按空格键重新开始');
         }
 
