@@ -142,7 +142,7 @@ Zero-dependency Web Audio API synthesis. No external audio files.
 | Eat | `playEatSound()` | `gameStep()` — food collision | Dual square waves: 440→880Hz + 660→1320Hz |
 | Death | `playDeathSound()` | `endGame()` (collisions only) | Sawtooth 300→80Hz + Triangle 60→30Hz |
 
-- `_ensureAudio()` — lazy-init `AudioContext` (browser autoplay policy compliant).
+- `_ensureAudio()` — lazy-init `AudioContext` (browser autoplay policy compliant). Returns `AudioContext` or `null` on failure (graceful degradation — game runs without sound).
 - `this.audioCtx` — initialized on first user gesture (keydown).
 - Win condition ("恭喜通关") goes through `spawnFood()` → `handleGameOver()`, bypassing `endGame()`, so no death sound plays on win.
 
