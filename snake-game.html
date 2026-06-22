@@ -65,6 +65,7 @@
             this.nextDirection = { x: 0, y: 0 };
             this.score = 0;
             this.state = 'initial';
+            this.isPaused = false;
             this.gameLoopId = null;
             this.difficulty = this.loadDifficulty();
             this.speed = SnakeGame.DIFFICULTY[this.difficulty].speed;
@@ -172,6 +173,7 @@
             this.nextDirection = { x: 0, y: 0 };
             this.score = 0;
             this.state = 'initial';
+            this.isPaused = false;
 
             const cx = Math.floor(this.tileCount / 2);
             const cy = Math.floor(this.tileCount / 2);
@@ -264,6 +266,7 @@
 
         startGame() {
             this.state = 'playing';
+            this.isPaused = false;
             this.speed = SnakeGame.DIFFICULTY[this.difficulty].speed;
             this.overlay.classList.add('hidden');
             if (this.gameLoopId) clearInterval(this.gameLoopId);
@@ -271,8 +274,41 @@
             this.playStartSound();
         }
 
-        gameStep() {
+        togglePause() {
             if (this.state !== 'playing') return;
+            if (this.isPaused) {
+                this.resumeGame();
+            } else {
+                this.pauseGame();
+            }
+        }
+
+        pauseGame() {
+            this.isPaused = true;
+            if (this.gameLoopId) {
+                clearInterval(this.gameLoopId);
+                this.gameLoopId = null;
+            }
+            this.showPauseOverlay();
+        }
+
+        resumeGame() {
+            this.isPaused = false;
+            this.overlay.classList.add('hidden');
+            this.gameLoopId = setInterval(() => this.gameStep(), this.speed);
+        }
+
+        showPauseOverlay() {
+            this.overlay.classList.remove('hidden');
+            this.overlay.classList.remove('clickable');
+            this.overlay.innerHTML = `
+                <div class="message">⏸️ 已暂停</div>
+                <div class="hint">按 P / Esc 继续  |  空格键重新开始</div>
+            `;
+        }
+
+        gameStep() {
+            if (this.state !== 'playing' || this.isPaused) return;
 
             // Apply buffered direction
             this.direction = { ...this.nextDirection };
@@ -675,6 +711,23 @@
                 e.preventDefault();
             }
 
+            // Pause toggle: P or Escape (playing or paused state)
+            if ((key === 'p' || key === 'P' || key === 'Escape') && this.state === 'playing') {
+                e.preventDefault();
+                this.togglePause();
+                return;
+            }
+
+            // Space to restart from paused state
+            if (key === ' ' && this.isPaused) {
+                e.preventDefault();
+                this.restart();
+                return;
+            }
+
+            // Block all other keys while paused
+            if (this.isPaused) return;
+
             // Difficulty switch via number keys (only in initial state)
             if (this.state === 'initial' && ['1', '2', '3', '4'].includes(key)) {
                 const map = { '1': 'easy', '2': 'medium', '3': 'hard', '4': 'hell' };
@@ -723,6 +776,7 @@
                 clearInterval(this.gameLoopId);
                 this.gameLoopId = null;
             }
+            this.isPaused = false;
             this.resetState();
             this.render();
             this.showInitialOverlay();
