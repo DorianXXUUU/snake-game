@@ -11,6 +11,7 @@
         <canvas id="snake-canvas"></canvas>
         <div id="overlay"></div>
         <button id="pause-btn" title="暂停 / 继续">⏸️</button>
+        <button id="quit-btn" title="退出游戏">✕</button>
     </div>
 
     <script>
@@ -81,6 +82,13 @@
             this.pauseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.togglePause();
+            });
+
+            // Quit button
+            this.quitBtn = document.getElementById('quit-btn');
+            this.quitBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.restart();
             });
 
             // Touch support — swipe on canvas
@@ -207,25 +215,16 @@
             const dx = end.clientX - this.touchStartPos.x;
             const dy = end.clientY - this.touchStartPos.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const dt = Date.now() - this.touchStartTime;
             this.touchStartPos = null;
 
-            // 滑动阈值: 20px
+            // 滑动阈值: 20px → 方向控制
             if (dist >= 20) {
-                // 判断主轴方向
                 const dir = Math.abs(dx) >= Math.abs(dy)
                     ? (dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 })
                     : (dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 });
                 this._handleDirectionInput(dir);
-            } else if (dt < 300) {
-                // 短按 = 点按（初始界面开始游戏，游戏结束界面重新开始）
-                if (this.state === 'initial') {
-                    // 点击开始：默认向右
-                    this._handleDirectionInput({ x: 1, y: 0 });
-                } else if (this.state === 'gameover') {
-                    this.restart();
-                }
             }
+            // 短按不做任何操作（由按钮处理开始/重启）
         }
 
         // 方向输入统一处理（键盘和触屏共用）
@@ -353,6 +352,7 @@
             this.isPaused = false;
             this.pauseBtn.textContent = '⏸️';
             this.pauseBtn.classList.add('visible');
+            this.quitBtn.classList.add('visible');
             this.speed = SnakeGame.DIFFICULTY[this.difficulty].speed;
             this.overlay.classList.add('hidden');
             if (this.gameLoopId) clearInterval(this.gameLoopId);
@@ -449,6 +449,7 @@
         endGame() {
             this.state = 'gameover';
             this.pauseBtn.classList.remove('visible');
+            this.quitBtn.classList.remove('visible');
             if (this.gameLoopId) {
                 clearInterval(this.gameLoopId);
                 this.gameLoopId = null;
@@ -619,6 +620,7 @@
             this.overlay.innerHTML = `
                 <div class="message">🐍 贪吃蛇</div>
                 ${btnsHTML}
+                <button id="start-btn">开始游戏</button>
                 <div class="hint">↑↓←→ / WASD 开始  |  1-4 切换难度</div>
             `;
 
@@ -629,6 +631,15 @@
                     this.setDifficulty(btn.dataset.diff);
                 });
             });
+
+            // Bind start button
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this._handleDirectionInput({ x: 1, y: 0 });
+                });
+            }
         }
 
         setDifficulty(diff) {
@@ -861,6 +872,7 @@
             }
             this.isPaused = false;
             this.pauseBtn.classList.remove('visible');
+            this.quitBtn.classList.remove('visible');
             this.resetState();
             this.render();
             this.showInitialOverlay();

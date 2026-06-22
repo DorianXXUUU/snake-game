@@ -253,6 +253,59 @@ canvas {
     background: #30363d;
 }
 
+/* quit button (top-left corner) */
+#quit-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+    line-height: 1;
+    background: rgba(22, 27, 34, 0.85);
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #f85149;
+    cursor: pointer;
+    z-index: 20;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+#quit-btn.visible {
+    display: flex;
+}
+#quit-btn:hover {
+    background: #30363d;
+}
+
+/* start button (on initial overlay) */
+#start-btn {
+    display: inline-block;
+    margin-top: 1.2rem;
+    padding: 10px 40px;
+    font-size: 1.1rem;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    color: #f0f6fc;
+    background: #238636;
+    border: 1px solid #3fb950;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+#start-btn:hover {
+    background: #2ea043;
+    box-shadow: 0 0 12px rgba(63, 185, 80, 0.3);
+}
+#start-btn:active {
+    background: #196c2e;
+}
+
 .diff-btns {
     display: flex;
     gap: 10px;
