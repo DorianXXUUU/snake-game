@@ -1,14 +1,18 @@
 # Dev Doc: Web Snake Game
 
 ## Overview
-Single-file web-based Snake game (`snake-game.html`, ~810 lines). No external dependencies. Canvas-rendered, controlled via arrow keys or WASD. Features: 4 difficulty levels, random wall obstacles (scattered or connected), localStorage leaderboard top-10, restart button.
+Web-based Snake game, split across two files (`snake-game.html` ~806 lines JS+HTML, `style.css` ~263 lines CSS). No external dependencies. Canvas-rendered, controlled via arrow keys or WASD. Features: 4 difficulty levels, random wall obstacles (connected line segments), localStorage leaderboard top-10, Web Audio API sound effects, P/Esc pause/resume, restart button.
 
 ## Project Structure
 ```
-/Users/xudeyan/Desktop/deyan-claude/
-├── snake-game.html   # The game (HTML + CSS + JS, ~810 lines)
-├── plan.md           # Design plan
-└── dev.md            # This document
+snake-game/
+├── snake-game.html   # HTML structure + SnakeGame class (~800 lines)
+├── style.css          # All CSS styles (~263 lines)
+├── README.md          # Project overview & changelog
+├── dev.md             # This document
+├── plan.md            # Design plan
+├── .gitignore
+└── LICENSE
 ```
 
 ## Architecture
@@ -16,22 +20,27 @@ Single-file web-based Snake game (`snake-game.html`, ~810 lines). No external de
 ### File layout
 ```
 snake-game.html
-├── <style>     ~195 lines   CSS — dark theme, overlay, leaderboard, difficulty buttons, restart btn
-├── <body>     ~10 lines     HTML — canvas + overlay placeholder
-└── <script>   ~600 lines    JS — SnakeGame class + DIFFICULTY config + init
+├── <head>      ~7 lines     meta + <link rel="stylesheet" href="style.css">
+├── <body>      ~7 lines     canvas + overlay placeholder
+└── <script>    ~790 lines   SnakeGame class + init
 ```
 
 ### State Machine
 ```
   ┌──────────┐  direction key    ┌──────────┐  boundary/self/wall    ┌───────────┐
   │  INITIAL │ ────────────────> │ PLAYING  │ ────────────────────> │ GAME OVER │
-  │          │ <── Space ─────── │          │                        │           │
-  └──────────┘                   └──────────┘                        └─────┬─────┘
-       ^                                                                   │
+  │          │ <── Space ─────── │  ↕ P/Esc │                        │           │
+  └──────────┘                   └────┬─────┘                        └─────┬─────┘
+       ^                              │ Pause / Resume                     │
+       │                              v                                    │
+       │                         ┌──────────┐                             │
+       │                         │  PAUSED  │                             │
+       │                         └──────────┘                             │
        └────────────── Space / restart button ─────────────────────────────┘
 ```
 - INITIAL: difficulty selector visible, 1-4 keys switch difficulty, direction key starts.
 - PLAYING: game loop active, overlay hidden.
+- PAUSED: isPaused=true, game loop stopped, "已暂停" overlay shown (P/Esc to resume, Space to restart).
 - GAME OVER: leaderboard + restart button shown via `handleGameOver()`.
 
 ## Data Model
@@ -46,13 +55,18 @@ snake-game.html
 - Count and pattern depend on `this.difficulty` (see **Difficulty System**).
 
 ### Difficulty: `'easy' | 'medium' | 'hard' | 'hell'`
-- Instance property `this.difficulty`, default `'medium'`.
+- Instance property `this.difficulty`, default `'easy'`.
 - Persisted to `localStorage` key `snake_difficulty`.
 - Loaded in constructor via `loadDifficulty()`.
 
 ### Speed: `number` (ms)
 - Instance property `this.speed`, set from `DIFFICULTY[difficulty].speed`.
 - Used in `setInterval(gameStep, this.speed)`.
+
+### Pause flag: `isPaused: boolean`
+- Instance property, default `false`.
+- When `true`, `gameStep()` returns immediately; direction keys are blocked.
+- Reset on `resetState()`, `startGame()`, `restart()`.
 
 ### Direction buffering
 - `direction` — active movement, applied at start of `gameStep()`.
@@ -74,7 +88,7 @@ Checked against `direction` (active), NOT `nextDirection`.
 | 2 | Self | `snake.slice(0, -1).some(s => s.x === newHead.x && s.y === newHead.y)` |
 | 3 | Obstacle | `walls.some(w => w.x === newHead.x && w.y === newHead.y)` |
 
-## Difficulty System (难度选择) — v2.5
+## Difficulty System (难度选择) — v2.6
 
 ### Configuration
 ```js
@@ -98,10 +112,8 @@ All difficulties use `wallMode: 'connected'`. Only segment count differs.
 ### Default
 - `loadDifficulty()` returns `'easy'` when no saved preference.
 
-### Wall generation modes
-**scattered**: Pick N random `(x, y)` pairs, skip occupied. Same as original behavior.
-
-**connected**: Generate N line segments. Each segment:
+### Wall generation (connected mode)
+Generate N line segments. Each segment:
 1. Pick random start position and direction (horizontal or vertical).
 2. Pick random length from `wallSegLen` range.
 3. Pre-validate: walk the entire segment, checking bounds and occupancy.
@@ -118,7 +130,35 @@ All difficulties use `wallMode: 'connected'`. Only segment count differs.
 ### Persistence
 | Key | Value | Methods |
 |-----|-------|---------|
-| `snake_difficulty` | `'easy'|'medium'|'hard'|'hell'` | `loadDifficulty()` / `saveDifficulty()` |
+| `snake_difficulty` | `'easy'\|'medium'\|'hard'\|'hell'` | `loadDifficulty()` / `saveDifficulty()` |
+
+## Sound Effects — v1.2.0
+
+Zero-dependency Web Audio API synthesis. No external audio files.
+
+| Sound | Method | Trigger | Implementation |
+|-------|--------|---------|----------------|
+| Start | `playStartSound()` | `startGame()` | Sine 330→660Hz, 120ms |
+| Eat | `playEatSound()` | `gameStep()` — food collision | Dual square waves: 440→880Hz + 660→1320Hz |
+| Death | `playDeathSound()` | `endGame()` (collisions only) | Sawtooth 300→80Hz + Triangle 60→30Hz |
+
+- `_ensureAudio()` — lazy-init `AudioContext` (browser autoplay policy compliant).
+- `this.audioCtx` — initialized on first user gesture (keydown).
+- Win condition ("恭喜通关") goes through `spawnFood()` → `handleGameOver()`, bypassing `endGame()`, so no death sound plays on win.
+
+## Pause Feature — v1.3.0
+
+| Key | State | Action |
+|-----|-------|--------|
+| P / Esc | `playing` / `paused` | Toggle pause |
+| Space | `paused` | Restart |
+| Any direction | `paused` | Blocked |
+
+- `isPaused` boolean flag independent of `state` machine.
+- `pauseGame()`: clears interval, shows "⏸️ 已暂停" overlay.
+- `resumeGame()`: restarts interval, hides overlay.
+- `gameStep()`: returns early when `isPaused` is true.
+- `handleKeyDown()`: pause/space check runs before direction processing.
 
 ## Key Implementation Details
 
@@ -134,6 +174,7 @@ All difficulties use `wallMode: 'connected'`. Only segment count differs.
 - Dynamic speed from `this.speed` (set at `startGame()` from difficulty config).
 - `setInterval(this.gameStep, this.speed)`.
 - Stopped on game over via `clearInterval(this.gameLoopId)`.
+- Also stopped on pause, restarted on resume.
 
 ### Food spawning (`spawnFood()`)
 1. Build occupied set: snake segments + wall tiles.
@@ -147,15 +188,17 @@ All difficulties use `wallMode: 'connected'`. Only segment count differs.
 
 ## Keyboard Input Map
 
-| Physical Keys | Action |
-|---------------|--------|
-| ↑ / W / w | Move up |
-| ↓ / S / s | Move down |
-| ← / A / a | Move left |
-| → / D / d | Move right |
-| `1` `2` `3` `4` | Switch difficulty (initial state only) |
-| Space | Restart (from gameover or initial) |
-| Any direction key (initial state) | Start game |
+| Physical Keys | State | Action |
+|---------------|-------|--------|
+| ↑ / W / w | initial | Start game (direction = up) |
+| ↓ / S / s | initial | Start game (direction = down) |
+| ← / A / a | initial | Start game (direction = left) |
+| → / D / d | initial | Start game (direction = right) |
+| ↑↓←→ / WASD | playing | Buffer direction (anti-180 guard) |
+| ↑↓←→ / WASD | paused | Blocked |
+| `1` `2` `3` `4` | initial | Switch difficulty |
+| P / Esc | playing / paused | Toggle pause |
+| Space | gameover / initial / paused | Restart |
 
 ## Leaderboard (排行榜)
 
@@ -186,7 +229,7 @@ All difficulties use `wallMode: 'connected'`. Only segment count differs.
 - `<button id="restart-btn">↻ 重新开始</button>` injected into overlay via `handleGameOver()`.
 - Click → `this.restart()` → `showInitialOverlay()` (difficulty preserved).
 - Overlay `.clickable` class enables `pointer-events: auto`.
-- Space key also works.
+- Space key also works (from gameover, initial, or paused states).
 
 ## Game Over Flow
 ```
@@ -231,3 +274,8 @@ endGame() / spawnFood() win
 | Date comparison (leaderboard) | Reference equality `entry === newEntry` |
 | Difficulty defaults on corrupt | `loadDifficulty()` validates against DIFFICULTY keys |
 | Connected wall segment OOB | Segment pre-validation before placement |
+| Direction keys while paused | Blocked by early return in `handleKeyDown()` |
+| Pause toggle not in playing state | `togglePause()` checks `this.state === 'playing'` |
+| Multiple rapid pause toggles | `pauseGame()` always clears interval before setting flag |
+| AudioContext blocked by browser | Lazy init on first user gesture via `_ensureAudio()` |
+| Death sound on win | Win bypasses `endGame()` → no death sound played |
