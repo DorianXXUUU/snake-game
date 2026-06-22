@@ -179,7 +179,7 @@ Zero-dependency Web Audio API synthesis. No external audio files.
 ### Food spawning (`spawnFood()`)
 1. Build occupied set: snake segments + wall tiles.
 2. Win check: `occupied.size >= tileCount * tileCount` → `handleGameOver('🎉 恭喜通关！', ...)`.
-3. Random roll until free cell found (max 1000 attempts).
+3. Random roll until free cell found (max 500 attempts), then fallback to deterministic scan of all cells.
 
 ### Responsive sizing (`resizeCanvas()`)
 - `maxSize = min(innerWidth, innerHeight) * 0.88`, clamped `[300, 600]`.
@@ -265,7 +265,7 @@ endGame() / spawnFood() win
 | Rapid direction changes | `nextDirection` buffer, last key wins |
 | 180° reversal | Anti-180 check vs `direction` |
 | Same direction repeated | No-op vs `nextDirection` |
-| Food on snake/walls | Occupied-set exclusion + re-roll |
+| Food on snake/walls | Occupied-set exclusion + random re-roll + deterministic fallback scan |
 | Snake fills grid | Win condition → `handleGameOver()` |
 | Window resize mid-game | TileSize only; tile-space unchanged |
 | Arrow key page scroll | `preventDefault()` |

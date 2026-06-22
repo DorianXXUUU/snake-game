@@ -403,15 +403,33 @@
                 return;
             }
 
+            let pos = null;
             let attempts = 0;
-            let pos;
-            do {
-                pos = {
+            const maxRandomAttempts = 500;
+            while (attempts < maxRandomAttempts) {
+                const candidate = {
                     x: Math.floor(Math.random() * this.tileCount),
                     y: Math.floor(Math.random() * this.tileCount),
                 };
+                if (!occupied.has(`${candidate.x},${candidate.y}`)) {
+                    pos = candidate;
+                    break;
+                }
                 attempts++;
-            } while (occupied.has(`${pos.x},${pos.y}`) && attempts < 1000);
+            }
+
+            // 随机未命中时，遍历所有格子找第一个空闲位置作为兜底
+            if (!pos) {
+                for (let x = 0; x < this.tileCount; x++) {
+                    for (let y = 0; y < this.tileCount; y++) {
+                        if (!occupied.has(`${x},${y}`)) {
+                            pos = { x, y };
+                            break;
+                        }
+                    }
+                    if (pos) break;
+                }
+            }
 
             this.food = pos;
         }
