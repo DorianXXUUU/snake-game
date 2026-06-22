@@ -10,6 +10,7 @@
     <div id="game-wrapper">
         <canvas id="snake-canvas"></canvas>
         <div id="overlay"></div>
+        <button id="pause-btn" title="暂停 / 继续">⏸️</button>
     </div>
 
     <script>
@@ -74,6 +75,20 @@
 
             window.addEventListener('keydown', (e) => this.handleKeyDown(e));
             window.addEventListener('resize', () => this.resizeCanvas());
+
+            // Pause button
+            this.pauseBtn = document.getElementById('pause-btn');
+            this.pauseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.togglePause();
+            });
+
+            // Touch support — swipe on canvas
+            this.touchStartPos = null;
+            this.touchStartTime = 0;
+            this.canvas.addEventListener('touchstart', (e) => this._onTouchStart(e), { passive: false });
+            this.canvas.addEventListener('touchmove', (e) => this._onTouchMove(e), { passive: false });
+            this.canvas.addEventListener('touchend', (e) => this._onTouchEnd(e), { passive: false });
 
             // AudioContext — 延迟初始化（浏览器要求用户交互后才能创建）
             this.audioCtx = null;
@@ -172,6 +187,69 @@
             osc.connect(gain).connect(ctx.destination);
             osc.start(now);
             osc.stop(now + 0.12);
+        }
+
+        // --- Touch handlers ---
+        _onTouchStart(e) {
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            this.touchStartPos = { x: t.clientX, y: t.clientY };
+            this.touchStartTime = Date.now();
+        }
+
+        _onTouchMove(e) {
+            e.preventDefault(); // 阻止页面滚动
+        }
+
+        _onTouchEnd(e) {
+            if (!this.touchStartPos) return;
+            const end = e.changedTouches[0];
+            const dx = end.clientX - this.touchStartPos.x;
+            const dy = end.clientY - this.touchStartPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const dt = Date.now() - this.touchStartTime;
+            this.touchStartPos = null;
+
+            // 滑动阈值: 20px
+            if (dist >= 20) {
+                // 判断主轴方向
+                const dir = Math.abs(dx) >= Math.abs(dy)
+                    ? (dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 })
+                    : (dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 });
+                this._handleDirectionInput(dir);
+            } else if (dt < 300) {
+                // 短按 = 点按（初始界面开始游戏，游戏结束界面重新开始）
+                if (this.state === 'initial') {
+                    // 点击开始：默认向右
+                    this._handleDirectionInput({ x: 1, y: 0 });
+                } else if (this.state === 'gameover') {
+                    this.restart();
+                }
+            }
+        }
+
+        // 方向输入统一处理（键盘和触屏共用）
+        _handleDirectionInput(candidate) {
+            // In initial state: any direction starts the game
+            if (this.state === 'initial') {
+                this.nextDirection = candidate;
+                this.startGame();
+                return;
+            }
+            // In playing state: validate and buffer direction
+            if (this.state === 'playing' && !this.isPaused) {
+                // Anti-180 check against current direction
+                if (
+                    candidate.x + this.direction.x === 0 &&
+                    candidate.y + this.direction.y === 0
+                ) return;
+                // Don't buffer the same direction
+                if (
+                    candidate.x === this.nextDirection.x &&
+                    candidate.y === this.nextDirection.y
+                ) return;
+                this.nextDirection = candidate;
+            }
         }
 
         resetState() {
@@ -273,6 +351,8 @@
         startGame() {
             this.state = 'playing';
             this.isPaused = false;
+            this.pauseBtn.textContent = '⏸️';
+            this.pauseBtn.classList.add('visible');
             this.speed = SnakeGame.DIFFICULTY[this.difficulty].speed;
             this.overlay.classList.add('hidden');
             if (this.gameLoopId) clearInterval(this.gameLoopId);
@@ -291,6 +371,7 @@
 
         pauseGame() {
             this.isPaused = true;
+            this.pauseBtn.textContent = '▶️';
             if (this.gameLoopId) {
                 clearInterval(this.gameLoopId);
                 this.gameLoopId = null;
@@ -300,6 +381,7 @@
 
         resumeGame() {
             this.isPaused = false;
+            this.pauseBtn.textContent = '⏸️';
             this.overlay.classList.add('hidden');
             this.gameLoopId = setInterval(() => this.gameStep(), this.speed);
         }
@@ -366,6 +448,7 @@
 
         endGame() {
             this.state = 'gameover';
+            this.pauseBtn.classList.remove('visible');
             if (this.gameLoopId) {
                 clearInterval(this.gameLoopId);
                 this.gameLoopId = null;
@@ -768,31 +851,7 @@
             const candidate = inputMap[key];
             if (!candidate) return;
 
-            // In initial state: any direction key starts the game
-            if (this.state === 'initial') {
-                this.nextDirection = candidate;
-                this.startGame();
-                return;
-            }
-
-            // In playing state: validate and buffer direction
-            if (this.state === 'playing') {
-                // Anti-180 check against current direction
-                if (
-                    candidate.x + this.direction.x === 0 &&
-                    candidate.y + this.direction.y === 0
-                ) {
-                    return; // reject reversal
-                }
-                // Don't buffer the same direction (no-op)
-                if (
-                    candidate.x === this.nextDirection.x &&
-                    candidate.y === this.nextDirection.y
-                ) {
-                    return;
-                }
-                this.nextDirection = candidate;
-            }
+            this._handleDirectionInput(candidate);
         }
 
         restart() {
@@ -801,6 +860,7 @@
                 this.gameLoopId = null;
             }
             this.isPaused = false;
+            this.pauseBtn.classList.remove('visible');
             this.resetState();
             this.render();
             this.showInitialOverlay();
