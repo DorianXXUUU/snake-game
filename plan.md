@@ -1,7 +1,7 @@
 # Plan: Web Snake Game
 
 ## Context
-Web-based Snake game split across two files (`snake-game.html` ~806 lines, `style.css` ~263 lines). Playable in desktop browser via arrow keys or WASD. Features: 4 difficulty levels, random connected-line wall segments, localStorage leaderboard, Web Audio API sound effects, P/Esc pause/resume, restart button.
+Web-based Snake game split across two files (`snake-game.html` ~920 lines, `style.css` ~418 lines). Playable in desktop browser via arrow keys or WASD, and mobile via touch swipe + buttons. Features: 4 difficulty levels, random connected-line wall segments, localStorage leaderboard, Web Audio API sound effects, P/Esc pause/resume, device detection for platform-adaptive UI, resume & home buttons, restart button, ad banner.
 
 ## Files
 - `/snake-game.html` — HTML structure + SnakeGame class
@@ -12,9 +12,13 @@ Web-based Snake game split across two files (`snake-game.html` ~806 lines, `styl
 ### HTML
 - `<canvas id="snake-canvas">` — rendering surface
 - `<div id="overlay">` — start screen / pause overlay / game-over overlay, absolutely positioned
+- `<button id="pause-btn">` — ⏸️ pause (top-right, visible during playing/paused)
+- `<button id="quit-btn">` — ✕ quit (top-left, visible during playing)
+- `<div id="ad-banner">` — bottom banner, full width
 - `<link rel="stylesheet" href="style.css">` — external stylesheet
+- DOM: `#app-container` > `#game-area` > `#game-wrapper` + `#ad-banner`
 
-### CSS (~263 lines)
+### CSS (~418 lines)
 - Dark theme (`#0d1117` page, `#161b22` canvas), flexbox centering
 - Canvas: rounded border, green-tinted box-shadow
 - Overlay: `pointer-events: none` default; `.clickable` enables mouse events
@@ -22,7 +26,7 @@ Web-based Snake game split across two files (`snake-game.html` ~806 lines, `styl
 - Leaderboard: scrollable top-10, `.current` row highlight
 - Restart button: green with hover glow
 
-### JavaScript — `SnakeGame` class (~790 lines)
+### JavaScript — `SnakeGame` class (~900 lines)
 
 **State machine:** `initial` → `playing` → `gameover` → (Space/button) → `initial`
 - Pause: `playing` ↔ `paused` (via P/Esc), `paused` → `initial` (via Space)
@@ -52,6 +56,7 @@ Default: `'easy'`. All levels use connected mode; only segment count differs.
 | `score` | number | Foods eaten |
 | `state` | `'initial'\|'playing'\|'gameover'` | State machine |
 | `isPaused` | boolean | Pause flag (independent of state) |
+| `isMobile` | boolean | Device detection (UA + maxTouchPoints) |
 | `gameLoopId` | number\|null | setInterval handle |
 | `audioCtx` | AudioContext\|null | Lazy-init on first user gesture |
 
@@ -115,11 +120,15 @@ Default: `'easy'`. All levels use connected mode; only segment count differs.
 - Keyboard `1-4` or click to switch difficulty on start screen
 - Random walls never overlap snake or food
 - Leaderboard top-10 (localStorage)
-- Restart button + Space key (from gameover, initial, or paused)
 - Snake head has direction-following eyes
 - Win condition (grid full)
 - Web Audio API sound effects (start, eat, death) — zero external files
-- P/Esc pause/resume with overlay
+- P/Esc pause/resume with overlay + ▶ continue button + 🏠 home button
+- Touch swipe direction control + start/resume/home/quit buttons
+- Device detection: platform-adaptive hint text (keyboard vs touch)
+- Score: top-center canvas, bright red, 1.5× font size
+- Equal-width pause overlay elements (210px)
+- Ad banner at page bottom
 
 ## Edge Cases
 1. Rapid direction changes → `nextDirection` buffer
@@ -137,23 +146,32 @@ Default: `'easy'`. All levels use connected mode; only segment count differs.
 13. Pause toggle outside playing state → `togglePause()` state check
 14. Death sound on win → win bypasses `endGame()`, no death sound
 15. AudioContext blocked → lazy init on first user gesture
+16. Mobile buttons unclickable → `showInitialOverlay()` adds `.clickable`
+17. Wrong hint on mobile → `isMobile` set before `showInitialOverlay()` in constructor
+18. iPadOS 13+ desktop UA → `maxTouchPoints > 1 && /Macintosh/i` fallback
+19. Score vs quit button overlap → score moved to top-center canvas
+20. Banner not at bottom → `#app-container` flex column, `#game-area` flex: 1
 
 ## Verification
-1. Open game → 4 difficulty buttons visible, "简单" highlighted, ←↑↓→/WASD hint
-2. Click each button → highlight changes, persists on reload
-3. Press `1`/`2`/`3`/`4` → difficulty switches
-4. Easy: 0 walls, 150ms speed
-5. Medium: 1 connected segment (4-8 tiles), 130ms speed
-6. Hard: 2 connected segments (4-8 tiles each), 110ms speed
-7. Hell: 3 connected segments (4-8 tiles each), 85ms speed
-8. Connected walls render as solid lines with cross pattern
-9. Direction key starts game with correct difficulty
-10. Game over → death sound, leaderboard + restart button appear
-11. Press P during game → pause overlay, game stops
-12. Press P/Esc again → resume, game continues
-13. Press Space while paused → restart to initial screen
-14. Press direction keys while paused → no effect
-15. Eat food → eat sound plays
-16. Restart → same difficulty, new random walls
-17. All 8 direction keys work, 180° reversal blocked
-18. Win (fill grid) → "恭喜通关" overlay, no death sound
+1. Open game → 4 difficulty buttons visible, "简单" highlighted, hint depends on device
+2. Mobile: hint = "选择难度，点击「开始游戏」"; Desktop: keyboard hint
+3. Click each button → highlight changes, persists on reload
+4. Press `1`/`2`/`3`/`4` → difficulty switches
+5. Easy: 0 walls, 150ms speed
+6. Medium: 1 connected segment (4-8 tiles), 130ms speed
+7. Hard: 2 connected segments (4-8 tiles each), 110ms speed
+8. Hell: 3 connected segments (4-8 tiles each), 85ms speed
+9. Connected walls render as solid lines with cross pattern
+10. Direction key starts game with correct difficulty
+11. Game over → death sound, leaderboard + restart + home buttons appear
+12. Press P during game → pause overlay with「继续游戏」+「返回主页」buttons
+13. Press P/Esc again or click「继续游戏」→ resume
+14. Click「返回主页」(pause or gameover) → back to initial screen
+15. Press Space / direction keys while paused → no effect (except Space = restart)
+16. Eat food → eat sound plays
+17. Restart → same difficulty, new random walls
+18. All 8 direction keys work, 180° reversal blocked
+19. Win (fill grid) → "恭喜通关" overlay, no death sound
+20. Score: top-center canvas, bright red `#f85149`, larger font
+21. Pause overlay buttons equal width (210px)
+22. Ad banner visible at page bottom, black bg, dark golden text

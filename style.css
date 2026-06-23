@@ -6,13 +6,24 @@
 
 body {
     background: #0d1117;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
     font-family: 'Courier New', monospace;
     overflow: hidden;
     user-select: none;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+#game-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
 #game-wrapper {
@@ -61,6 +72,8 @@ canvas {
     border-radius: 12px;
     border: 1px solid #30363d;
     letter-spacing: 2px;
+    width: 210px;
+    box-sizing: border-box;
 }
 
 #overlay .score-display {
@@ -201,6 +214,57 @@ canvas {
     font-size: 1.05rem;
 }
 
+#resume-btn {
+    margin-top: 1rem;
+    width: 210px;
+    box-sizing: border-box;
+    padding: 10px 32px;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    color: #f0f6fc;
+    background: #1f6feb;
+    border: 1px solid #58a6ff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+#resume-btn:hover {
+    background: #388bfd;
+    box-shadow: 0 0 12px rgba(88, 166, 255, 0.3);
+}
+#resume-btn:active {
+    background: #1a5dcd;
+}
+
+/* Home button — returns to initial screen from pause / game-over */
+#home-btn-pause,
+#home-btn-over {
+    margin-top: 0.6rem;
+    width: 210px;
+    box-sizing: border-box;
+    padding: 10px 32px;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    color: #c9d1d9;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+#home-btn-pause:hover,
+#home-btn-over:hover {
+    background: #30363d;
+}
+#home-btn-pause:active,
+#home-btn-over:active {
+    background: #161b22;
+}
+
 #restart-btn {
     margin-top: 1rem;
     padding: 10px 32px;
@@ -337,4 +401,18 @@ canvas {
     color: #f0f6fc;
     border-color: #3fb950;
     box-shadow: 0 0 8px rgba(63, 185, 80, 0.25);
+}
+
+/* Ad banner — bottom of page, full width */
+#ad-banner {
+    padding: 17px 0;
+    width: 100%;
+    background: #000000;
+    color: #c4a030;
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-align: center;
+    border-top: 1px solid #222;
 }

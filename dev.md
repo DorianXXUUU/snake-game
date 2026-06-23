@@ -1,13 +1,13 @@
 # Dev Doc: Web Snake Game
 
 ## Overview
-Web-based Snake game, split across two files (`snake-game.html` ~806 lines JS+HTML, `style.css` ~263 lines CSS). No external dependencies. Canvas-rendered, controlled via arrow keys or WASD. Features: 4 difficulty levels, random wall obstacles (connected line segments), localStorage leaderboard top-10, Web Audio API sound effects, P/Esc pause/resume, restart button.
+Web-based Snake game, split across two files (`snake-game.html` ~920 lines JS+HTML, `style.css` ~418 lines CSS). No external dependencies. Canvas-rendered, controlled via arrow keys or WASD. Features: 4 difficulty levels, random wall obstacles (connected line segments), localStorage leaderboard top-10, Web Audio API sound effects, P/Esc pause/resume, device detection for platform-adaptive UI, touch support with swipe + buttons.
 
 ## Project Structure
 ```
 snake-game/
-├── snake-game.html   # HTML structure + SnakeGame class (~800 lines)
-├── style.css          # All CSS styles (~263 lines)
+├── snake-game.html   # HTML structure + SnakeGame class (~920 lines)
+├── style.css          # All CSS styles (~418 lines)
 ├── README.md          # Project overview & changelog
 ├── dev.md             # This document
 ├── plan.md            # Design plan
@@ -21,8 +21,21 @@ snake-game/
 ```
 snake-game.html
 ├── <head>      ~7 lines     meta + <link rel="stylesheet" href="style.css">
-├── <body>      ~7 lines     canvas + overlay placeholder
-└── <script>    ~790 lines   SnakeGame class + init
+├── <body>      ~12 lines    #app-container > #game-area > #game-wrapper + #ad-banner
+└── <script>    ~900 lines   SnakeGame class + init
+```
+
+### DOM Structure
+```
+body
+└── #app-container (flex column, min-height: 100vh)
+    ├── #game-area (flex: 1, centers game vertically)
+    │   └── #game-wrapper (position: relative)
+    │       ├── canvas#snake-canvas
+    │       ├── #overlay (absolute, covers canvas)
+    │       ├── #pause-btn (absolute, top-right, z-index: 20)
+    │       └── #quit-btn (absolute, top-left, z-index: 20)
+    └── #ad-banner (bottom banner, full width)
 ```
 
 ### State Machine
@@ -38,10 +51,10 @@ snake-game.html
        │                         └──────────┘                             │
        └────────────── Space / restart button ─────────────────────────────┘
 ```
-- INITIAL: difficulty selector visible, 1-4 keys switch difficulty, direction key starts.
-- PLAYING: game loop active, overlay hidden.
-- PAUSED: isPaused=true, game loop stopped, "已暂停" overlay shown (P/Esc to resume, Space to restart).
-- GAME OVER: leaderboard + restart button shown via `handleGameOver()`.
+- INITIAL: difficulty selector visible, 1-4 keys switch difficulty, direction key or「开始游戏」button starts. Overlay has `.clickable` so buttons work on mobile.
+- PLAYING: game loop active, overlay hidden. Score rendered top-center canvas in bright red. ⏸️ + ✕ buttons visible.
+- PAUSED: isPaused=true, game loop stopped. Overlay shows「已暂停」+「▶ 继续游戏」(blue) +「🏠 返回主页」(gray). P/Esc resumes, Space restarts.
+- GAME OVER: leaderboard +「↻ 重新开始」(green) +「🏠 返回主页」(gray) via `handleGameOver()`.
 
 ## Data Model
 
@@ -146,19 +159,31 @@ Zero-dependency Web Audio API synthesis. No external audio files.
 - `this.audioCtx` — initialized on first user gesture (keydown).
 - Win condition ("恭喜通关") goes through `spawnFood()` → `handleGameOver()`, bypassing `endGame()`, so no death sound plays on win.
 
-## Pause Feature — v1.3.0
+## Pause Feature — v1.3.0 + v1.5.0
 
-| Key | State | Action |
+| Key / Button | State | Action |
 |-----|-------|--------|
 | P / Esc | `playing` / `paused` | Toggle pause |
 | Space | `paused` | Restart |
 | Any direction | `paused` | Blocked |
+| ▶ 继续游戏 btn | `paused` | Resume game |
+| 🏠 返回主页 btn | `paused` | Restart → initial screen |
 
 - `isPaused` boolean flag independent of `state` machine.
-- `pauseGame()`: clears interval, shows "⏸️ 已暂停" overlay.
+- `pauseGame()`: clears interval, shows overlay with「已暂停」+ resume button + home button.
 - `resumeGame()`: restarts interval, hides overlay.
 - `gameStep()`: returns early when `isPaused` is true.
 - `handleKeyDown()`: pause/space check runs before direction processing.
+- Pause overlay elements have unified width 210px.
+
+## Device Detection — v1.5.0
+
+- `this.isMobile` set in constructor BEFORE `showInitialOverlay()`.
+- Detection: UA regex (`/Mobi|Android|iPhone|iPad|iPod/i`) + `maxTouchPoints > 1 && /Macintosh/i` (iPadOS 13+).
+- Controls hint text in 3 places:
+  - `showInitialOverlay()`: keyboard hint vs touch hint
+  - `showPauseOverlay()`: desktop shows keyboard hint, mobile hides it
+  - `endGame()` / win: "按空格键" vs "点击下方按钮"
 
 ## Key Implementation Details
 
@@ -168,7 +193,7 @@ Zero-dependency Web Audio API synthesis. No external audio files.
 3. **Walls** — dark gray fill (`#30363d`) with diagonal cross pattern (`#21262d`). Rendered after grid, before snake.
 4. **Snake** (tail-first): head `#3fb950` + glow + white eyes tracking direction; body gradient green→teal with rounded corners.
 5. **Food** — red circle `#f85149` + `shadowBlur=12` glow + inner white highlight.
-6. **Score** — `得分: ${score}`, bold monospace, top-left corner.
+6. **Score** — `得分: ${score}`, bold monospace, top-center canvas (`canvas.width/2`), bright red `#f85149`, font-size 1.5× tileSize×0.7.
 
 ### Game loop
 - Dynamic speed from `this.speed` (set at `startGame()` from difficulty config).
@@ -186,8 +211,9 @@ Zero-dependency Web Audio API synthesis. No external audio files.
 - `tileSize = floor(maxSize / 25)`, canvas = `tileSize * 25`.
 - Snake/food/wall positions in tile-space never change on resize.
 
-## Keyboard Input Map
+## Input Map
 
+### Keyboard
 | Physical Keys | State | Action |
 |---------------|-------|--------|
 | ↑ / W / w | initial | Start game (direction = up) |
@@ -199,6 +225,18 @@ Zero-dependency Web Audio API synthesis. No external audio files.
 | `1` `2` `3` `4` | initial | Switch difficulty |
 | P / Esc | playing / paused | Toggle pause |
 | Space | gameover / initial / paused | Restart |
+
+### Touch & Buttons
+| Gesture / Button | State | Action |
+|-------------|-------|--------|
+| Canvas swipe (≥20px) | playing | Control direction |
+| Canvas swipe (≥20px) | initial | Start game with direction |
+|「开始游戏」button | initial | Start game (direction = right) |
+| ⏸️ button (top-right) | playing/paused | Toggle pause |
+| ✕ button (top-left) | playing | Quit → initial screen |
+|「▶ 继续游戏」button | paused | Resume game |
+|「🏠 返回主页」button | paused / gameover | Restart → initial screen |
+|「↻ 重新开始」button | gameover | Restart game |
 
 ## Leaderboard (排行榜)
 
@@ -253,7 +291,11 @@ endGame() / spawnFood() win
 | Snake head | `#3fb950` | Bright green + glow |
 | Snake body | gradient `#2ea043` → `#238636` | Green-to-teal |
 | Food | `#f85149` | Red + shadowBlur glow |
-| Score text | `#c9d1d9` | Light gray |
+| Score text | `#f85149` | Bright red, top-center, 1.5× size |
+| Resume button | `#1f6feb` / `#58a6ff` border | Blue |
+| Home button | `#21262d` / `#30363d` border | Dark gray |
+| Ad banner BG | `#000000` | Black |
+| Ad banner text | `#c4a030` | Dark golden yellow |
 | Overlay message | `#f0f6fc` | White |
 | Overlay hint | `#8b949e` | Muted gray |
 | Difficulty btn | `#21262d` / active `#238636` | Pill button |
@@ -279,3 +321,8 @@ endGame() / spawnFood() win
 | Multiple rapid pause toggles | `pauseGame()` always clears interval before setting flag |
 | AudioContext blocked by browser | Lazy init on first user gesture via `_ensureAudio()` |
 | Death sound on win | Win bypasses `endGame()` → no death sound played |
+| Mobile buttons unclickable | `showInitialOverlay()` adds `.clickable` (not removes) |
+| Wrong hint text on mobile | `this.isMobile` must be set BEFORE `showInitialOverlay()` in constructor |
+| Score overlapped by quit button | Score moved to top-center canvas |
+| iPadOS 13+ UA spoofing | Also check `maxTouchPoints > 1 && /Macintosh/i` |
+| Banner not at page bottom | `#app-container` flex column + `#game-area` flex: 1 pushes banner down |
