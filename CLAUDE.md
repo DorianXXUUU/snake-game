@@ -11,6 +11,9 @@ Snake game 项目文档，供 Claude Code 快速理解项目并高效工作。
 ```
 ├── snake-game.html    # HTML + JS (~920 行) — 主文件
 ├── style.css          # 全部样式 (~418 行)
+├── package.json       # 可选 npm 脚本（serve / serve:local / test）
+├── tests/
+│   └── smoke.test.mjs # 零依赖冒烟测试
 ├── dev.md             # 详细开发文档（架构、数据模型、渲染管线）
 ├── plan.md            # 设计计划 + 验证清单
 ├── README.md          # 项目简介 + 版本记录
@@ -46,19 +49,23 @@ body
 
 ```bash
 open snake-game.html                          # 桌面直接打开
-cd ~ && python3 -c "
-import os
-os.chdir('/path/to/Snake')
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-HTTPServer(('0.0.0.0', 8090), SimpleHTTPRequestHandler).serve_forever()
-"                                              # 手机测试服务器
+npm run serve                                 # 手机 / 局域网测试服务器，端口 8080
+npm run serve:local                           # 本机浏览器验证，端口 8080
 ```
 
-> ⚠️ `python3 -m http.server` 在 conda Python 3.12 中 `os.getcwd()` 权限错误，需用上述 `-c` 方式绕过
+无需安装外部依赖；`package.json` 只提供脚本入口。若遇到 Python 环境的 `http.server` 权限或 cwd 问题，可退回 README 中的直接打开方式，或用项目根目录作为工作目录启动服务。
+
+## 测试方式
+
+```bash
+npm test
+```
+
+`tests/smoke.test.mjs` 只使用 Node 内置模块，检查 HTML 结构、内联脚本语法、关键 CSS 选择器、localStorage/touch/keyboard 源码入口和 npm 脚本配置。游戏行为仍需浏览器验证，清单见 `plan.md`。
 
 ## 注意事项
 
-- **无测试**：所有修改需在浏览器手动验证（或 Chrome DevTools 手机模拟）
+- **测试覆盖有限**：先跑 `npm test`，再按 `plan.md` 做浏览器验证（或 Chrome DevTools 手机模拟）
 - **无 git 自动回滚**：修改前建议先 commit
 - **Canvas 渲染**：墙壁/蛇/食物/分数全部通过 Canvas API 绘制，不经过 DOM
 - **方向处理**：键盘和触屏统一走 `_handleDirectionInput()`，不要在两处重复逻辑

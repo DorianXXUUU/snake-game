@@ -1,19 +1,52 @@
 # Dev Doc: Web Snake Game
 
 ## Overview
-Web-based Snake game, split across two files (`snake-game.html` ~920 lines JS+HTML, `style.css` ~418 lines CSS). No external dependencies. Canvas-rendered, controlled via arrow keys or WASD. Features: 4 difficulty levels, random wall obstacles (connected line segments), localStorage leaderboard top-10, Web Audio API sound effects, P/Esc pause/resume, device detection for platform-adaptive UI, touch support with swipe + buttons.
+Web-based Snake game, split across two runtime files (`snake-game.html` ~920 lines JS+HTML, `style.css` ~418 lines CSS). No external runtime dependencies. Canvas-rendered, controlled via arrow keys or WASD. Features: 4 difficulty levels, random wall obstacles (connected line segments), localStorage leaderboard top-10, Web Audio API sound effects, P/Esc pause/resume, device detection for platform-adaptive UI, touch support with swipe + buttons.
 
 ## Project Structure
 ```
 snake-game/
 ├── snake-game.html   # HTML structure + SnakeGame class (~920 lines)
 ├── style.css          # All CSS styles (~418 lines)
+├── package.json       # Optional npm scripts for serving and smoke checks
+├── tests/
+│   └── smoke.test.mjs # Zero-dependency smoke checks
 ├── README.md          # Project overview & changelog
 ├── dev.md             # This document
 ├── plan.md            # Design plan
 ├── .gitignore
 └── LICENSE
 ```
+
+## Run And Test
+
+### Install
+No external dependencies are required. `npm install` is optional and should not create any dependency tree for the current project.
+
+### Run
+```bash
+open snake-game.html
+npm run serve
+npm run serve:local
+```
+
+- `open snake-game.html` is enough for desktop play.
+- `npm run serve` starts `python3 -m http.server 8080 --bind 0.0.0.0` for LAN/mobile testing.
+- `npm run serve:local` binds to `127.0.0.1` for local browser automation.
+
+### Test
+```bash
+npm test
+```
+
+`tests/smoke.test.mjs` uses only Node built-ins. It checks:
+- HTML has the expected game/container/control elements.
+- Inline JavaScript compiles.
+- CSS contains selectors for the main UI surfaces.
+- Game script still contains difficulty, localStorage, keyboard, and touch entry points.
+- `package.json` exposes the expected `test` and `serve` scripts.
+
+This smoke test does not replace browser QA. Use the verification checklist near the end of `plan.md` for gameplay behavior.
 
 ## Architecture
 

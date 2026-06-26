@@ -19,6 +19,9 @@
 snake-game/
 ├── snake-game.html    # 主文件：HTML 结构 + JavaScript 游戏逻辑（~920 行）
 ├── style.css          # 全部样式：暗色主题、遮罩、排行榜、按钮（~418 行）
+├── package.json       # 可选 npm 脚本：本地服务与冒烟测试
+├── tests/
+│   └── smoke.test.mjs # 零依赖冒烟测试：结构、语法、关键选择器
 ├── dev.md             # 开发文档：架构、数据模型、渲染管线、边界情况
 ├── plan.md            # 设计计划：架构概览与验证清单
 ├── README.md          # 本文件
@@ -33,11 +36,23 @@ snake-game/
 open snake-game.html
 
 # 方式二：启动本地服务器（手机测试）
-python3 -m http.server 8080 --bind 0.0.0.0
+npm run serve
 # 手机浏览器访问 http://<局域网IP>:8080/snake-game.html
 ```
 
-无需安装任何依赖。
+无需安装任何外部依赖；`package.json` 只提供脚本入口。也可以不用 npm，直接运行：
+
+```bash
+python3 -m http.server 8080 --bind 0.0.0.0
+```
+
+## 测试
+
+```bash
+npm test
+```
+
+当前测试为零依赖冒烟检查，覆盖 HTML 结构、内联脚本语法、关键 CSS 选择器、localStorage/touch/keyboard 相关源码入口和 npm 脚本配置。浏览器交互仍建议按 `plan.md` 的验证清单手动或自动化检查。
 
 ## 操作说明
 
@@ -71,6 +86,11 @@ python3 -m http.server 8080 --bind 0.0.0.0
 | 地狱 | 3 | 85ms |
 
 ## 版本记录
+
+### v1.5.1 (2026-06-26)
+- 🧪 新增零依赖冒烟测试：`npm test`
+- 🔧 新增可选 npm 脚本：`npm run serve` / `npm run serve:local`
+- 📝 同步 README / dev.md / plan.md / CLAUDE.md 的运行与测试说明
 
 ### v1.5.0 (2026-06-24)
 - ✨ 新增设备平台检测：桌面端/移动端自适应操作提示文案

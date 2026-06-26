@@ -1,0 +1,12 @@
+{
+  "name": "snake-game",
+  "version": "1.5.1",
+  "private": true,
+  "description": "Zero-dependency HTML5 Canvas snake game.",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8080 --bind 0.0.0.0",
+    "serve:local": "python3 -m http.server 8080 --bind 127.0.0.1",
+    "test": "node tests/smoke.test.mjs"
+  }
+}

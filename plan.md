@@ -1,11 +1,13 @@
 # Plan: Web Snake Game
 
 ## Context
-Web-based Snake game split across two files (`snake-game.html` ~920 lines, `style.css` ~418 lines). Playable in desktop browser via arrow keys or WASD, and mobile via touch swipe + buttons. Features: 4 difficulty levels, random connected-line wall segments, localStorage leaderboard, Web Audio API sound effects, P/Esc pause/resume, device detection for platform-adaptive UI, resume & home buttons, restart button, ad banner.
+Web-based Snake game split across two runtime files (`snake-game.html` ~920 lines, `style.css` ~418 lines). Playable in desktop browser via arrow keys or WASD, and mobile via touch swipe + buttons. Features: 4 difficulty levels, random connected-line wall segments, localStorage leaderboard, Web Audio API sound effects, P/Esc pause/resume, device detection for platform-adaptive UI, resume & home buttons, restart button, ad banner.
 
 ## Files
 - `/snake-game.html` — HTML structure + SnakeGame class
 - `/style.css` — All CSS styles (dark theme, overlay, leaderboard, buttons)
+- `/package.json` — Optional npm scripts (`serve`, `serve:local`, `test`)
+- `/tests/smoke.test.mjs` — Zero-dependency smoke checks for structure and syntax
 
 ## Architecture
 
@@ -130,6 +132,13 @@ Default: `'easy'`. All levels use connected mode; only segment count differs.
 - Equal-width pause overlay elements (210px)
 - Ad banner at page bottom
 
+### Tooling
+- No external dependencies and no build step.
+- `npm run serve` serves the folder on port 8080 for LAN/mobile testing.
+- `npm run serve:local` serves the folder on `127.0.0.1:8080` for local browser checks.
+- `npm test` runs `tests/smoke.test.mjs` with Node built-ins only.
+- The smoke test validates structure and syntax; gameplay still needs browser verification.
+
 ## Edge Cases
 1. Rapid direction changes → `nextDirection` buffer
 2. 180° reversal → anti-180 check vs `direction`
@@ -153,6 +162,7 @@ Default: `'easy'`. All levels use connected mode; only segment count differs.
 20. Banner not at bottom → `#app-container` flex column, `#game-area` flex: 1
 
 ## Verification
+0. Run `npm test` → "Smoke checks passed"
 1. Open game → 4 difficulty buttons visible, "简单" highlighted, hint depends on device
 2. Mobile: hint = "选择难度，点击「开始游戏」"; Desktop: keyboard hint
 3. Click each button → highlight changes, persists on reload
